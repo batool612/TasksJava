@@ -20,20 +20,19 @@ public class User implements UserDetails {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
     private Long id;
 
+    @Column(name = "name", nullable = false)
     private String name;
 
-    @Column(unique = true, nullable = false)
+    @Column(name = "email", unique = true, nullable = false)
     private String email;
 
-    @Column(nullable = false)
+    @Column(name = "password", nullable = false)
     private String password;
 
-    /**
-     * Example values: ROLE_USER, ROLE_ADMIN
-     */
-    @Column(nullable = false)
+    @Column(name = "role", nullable = false)
     private String role = "ROLE_USER";
 
     @Override
