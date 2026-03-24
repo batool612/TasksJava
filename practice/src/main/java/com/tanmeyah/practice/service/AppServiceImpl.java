@@ -9,6 +9,8 @@ import com.tanmeyah.practice.DTO.Responses.TaskResponseDTO;
 import com.tanmeyah.practice.DTO.Responses.UserResponseDTO;
 import com.tanmeyah.practice.Entity.Task;
 import com.tanmeyah.practice.Entity.User;
+import com.tanmeyah.practice.Exception.ConflictException;
+import com.tanmeyah.practice.Exception.NotFoundException;
 import com.tanmeyah.practice.Repository.TaskRepository;
 import com.tanmeyah.practice.Repository.UserRepository;
 import com.tanmeyah.practice.Secuirty.JwtService;
@@ -65,6 +67,10 @@ public class AppServiceImpl implements AppService {
 
     @Override
     public UserResponseDTO createUser(UserRequestDTO request) {
+        if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+            throw new ConflictException("User with this email already exists");
+        }
+
         User user = new User();
         user.setName(request.getName());
         user.setEmail(request.getEmail());
@@ -85,7 +91,7 @@ public class AppServiceImpl implements AppService {
     public UserResponseDTO getUserById(Long id) {
         return userRepository.findById(id)
                 .map(this::mapToUserResponse)
-                .orElse(null);
+                .orElseThrow(() -> new NotFoundException("User not found"));
     }
 
     @Override
@@ -111,7 +117,7 @@ public class AppServiceImpl implements AppService {
     public TaskResponseDTO getTaskById(Long id) {
         return taskRepository.findById(id)
                 .map(this::mapToTaskResponse)
-                .orElse(null);
+                .orElseThrow(() -> new NotFoundException("Task not found"));
     }
 
     @Override
@@ -124,16 +130,16 @@ public class AppServiceImpl implements AppService {
                     Task updated = taskRepository.save(task);
                     return mapToTaskResponse(updated);
                 })
-                .orElse(null);
+                .orElseThrow(() -> new NotFoundException("Task not found"));
     }
 
     @Override
     public boolean deleteTask(Long id) {
-        if (taskRepository.existsById(id)) {
-            taskRepository.deleteById(id);
-            return true;
+        if (!taskRepository.existsById(id)) {
+            throw new NotFoundException("Task not found");
         }
-        return false;
+        taskRepository.deleteById(id);
+        return true;
     }
 
     private UserResponseDTO mapToUserResponse(User user) {
