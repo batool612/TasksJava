@@ -61,7 +61,12 @@ public class AppServiceImpl implements AppService {
         );
 
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-        String token = jwtService.generateToken(userDetails);
+        String token;
+        if (userDetails instanceof User user) {
+            token = jwtService.generateToken(user);
+        } else {
+            token = jwtService.generateToken(userDetails);
+        }
         return ResponseEntity.ok(new AuthResponse(token));
     }
 
@@ -95,11 +100,14 @@ public class AppServiceImpl implements AppService {
     }
 
     @Override
-    public TaskResponseDTO addTask(TaskRequestDTO request) {
+    public TaskResponseDTO addTask(TaskRequestDTO request, Long userId) {
+        User user = getAuthenticatedUser(userId);
+
         Task task = new Task();
         task.setTitle(request.getTitle());
         task.setDescription(request.getDescription());
         task.setCompleted(request.isCompleted());
+        task.setUser(user);
 
         Task saved = taskRepository.save(task);
         return mapToTaskResponse(saved);
@@ -121,12 +129,14 @@ public class AppServiceImpl implements AppService {
     }
 
     @Override
-    public TaskResponseDTO updateTask(Long id, TaskRequestDTO request) {
-        return taskRepository.findById(id)
+    public TaskResponseDTO updateTask(Long id, TaskRequestDTO request, Long userId) {
+        User user = getAuthenticatedUser(userId);
+        return taskRepository.findByIdAndUserId(id, user.getId())
                 .map(task -> {
                     task.setTitle(request.getTitle());
                     task.setDescription(request.getDescription());
                     task.setCompleted(request.isCompleted());
+                    task.setUser(user);
                     Task updated = taskRepository.save(task);
                     return mapToTaskResponse(updated);
                 })
@@ -134,11 +144,11 @@ public class AppServiceImpl implements AppService {
     }
 
     @Override
-    public boolean deleteTask(Long id) {
-        if (!taskRepository.existsById(id)) {
-            throw new NotFoundException("Task not found");
-        }
-        taskRepository.deleteById(id);
+    public boolean deleteTask(Long id, Long userId) {
+        User user = getAuthenticatedUser(userId);
+        Task task = taskRepository.findByIdAndUserId(id, user.getId())
+                .orElseThrow(() -> new NotFoundException("Task not found"));
+        taskRepository.delete(task);
         return true;
     }
 
@@ -156,9 +166,13 @@ public class AppServiceImpl implements AppService {
                 task.getTitle(),
                 task.getDescription(),
                 task.isCompleted(),
-                null,
-                null
+                task.getUser() != null ? task.getUser().getId() : null,
+                task.getUser() != null ? task.getUser().getName() : null
         );
     }
-}
 
+    private User getAuthenticatedUser(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("Authenticated user not found"));
+    }
+}

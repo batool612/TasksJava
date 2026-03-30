@@ -14,7 +14,5 @@ public class TaskRequestDTO {
     @Size(max = 2000)
     private String description;
     private boolean completed;
-
-    private Long userId;
 }
 

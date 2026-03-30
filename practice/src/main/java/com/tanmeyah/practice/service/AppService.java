@@ -22,14 +22,13 @@ public interface AppService {
 
     UserResponseDTO getUserById(Long id);
 
-    TaskResponseDTO addTask(TaskRequestDTO request);
+    TaskResponseDTO addTask(TaskRequestDTO request, Long userId);
 
     List<TaskResponseDTO> getAllTasks();
 
     TaskResponseDTO getTaskById(Long id);
 
-    TaskResponseDTO updateTask(Long id, TaskRequestDTO request);
+    TaskResponseDTO updateTask(Long id, TaskRequestDTO request, Long userId);
 
-    boolean deleteTask(Long id);
+    boolean deleteTask(Long id, Long userId);
 }
-

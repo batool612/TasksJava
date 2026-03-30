@@ -7,10 +7,12 @@ import com.tanmeyah.practice.DTO.Requests.UserRequestDTO;
 import com.tanmeyah.practice.DTO.Responses.AuthResponse;
 import com.tanmeyah.practice.DTO.Responses.TaskResponseDTO;
 import com.tanmeyah.practice.DTO.Responses.UserResponseDTO;
+import com.tanmeyah.practice.Entity.User;
 import com.tanmeyah.practice.service.AppService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -50,8 +52,9 @@ public class AppController {
 
     // -------- TASKS --------
     @PostMapping("/tasks")
-    public TaskResponseDTO createTask(@Valid @RequestBody TaskRequestDTO request) {
-        return appService.addTask(request);
+    public TaskResponseDTO createTask(@Valid @RequestBody TaskRequestDTO request, Authentication authentication) {
+        Long userId = extractUserId(authentication);
+        return appService.addTask(request, userId);
     }
 
     @GetMapping("/tasks")
@@ -65,13 +68,24 @@ public class AppController {
     }
 
     @PutMapping("/tasks/{id}")
-    public TaskResponseDTO updateTask(@PathVariable Long id, @Valid @RequestBody TaskRequestDTO request) {
-        return appService.updateTask(id, request);
+    public TaskResponseDTO updateTask(@PathVariable Long id, @Valid @RequestBody TaskRequestDTO request, Authentication authentication) {
+        Long userId = extractUserId(authentication);
+        return appService.updateTask(id, request, userId);
     }
 
     @DeleteMapping("/tasks/{id}")
-    public String deleteTask(@PathVariable Long id) {
-        return appService.deleteTask(id) ? "Task deleted successfully" : "Task not found";
+    public String deleteTask(@PathVariable Long id, Authentication authentication) {
+        Long userId = extractUserId(authentication);
+        return appService.deleteTask(id, userId) ? "Task deleted successfully" : "Task not found";
+    }
+
+    private Long extractUserId(Authentication authentication) {
+        if (authentication == null || authentication.getPrincipal() == null) {
+            throw new IllegalStateException("Missing authentication principal");
+        }
+        if (authentication.getPrincipal() instanceof User user) {
+            return user.getId();
+        }
+        throw new IllegalStateException("Unexpected authentication principal type: " + authentication.getPrincipal().getClass().getName());
     }
 }
-

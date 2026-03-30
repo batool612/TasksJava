@@ -20,4 +20,8 @@ spring:
     show-sql: true
     hibernate:
       ddl-auto: update
-    database-platform: org.hibernate.dialect.H2Dialect
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+
+jwt:
+  secret: ${JWT_SECRET:my-super-secret-key-for-jwt-signing-should-be-long}
+  expiration-ms: ${JWT_EXPIRATION_MS:86400000}

@@ -40,6 +40,15 @@ public class User implements UserDetails {
         return List.of(new SimpleGrantedAuthority(role));
     }
 
+
+    //The relationship is owned by the "user" field inside Task
+    // Without mappedBy kan ha y create a new table
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
+    //This is the "parent" side
+    @com.fasterxml.jackson.annotation.JsonManagedReference
+    private List<Task> tasks;
+
+
     @Override
     public String getUsername() {
         return email;

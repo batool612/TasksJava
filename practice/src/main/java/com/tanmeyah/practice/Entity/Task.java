@@ -25,9 +25,9 @@ public class Task {
 
     @Column(name = "completed", nullable = false)
     private boolean completed;
+
+    @ManyToOne
+    @JoinColumn(name = "user_id", nullable = false)
+    @com.fasterxml.jackson.annotation.JsonBackReference
+    private User user;
 }
-
-
-
-
-

@@ -50,7 +50,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         //All routes starting with /auth/ are public
                         .requestMatchers("/auth/**").permitAll()
-                        //This allows anyone to view tasks.
+                        // Public read for tasks
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/tasks/**").permitAll()
                         //Any request not defined above must be authenticated.
                         .anyRequest().authenticated()
@@ -60,5 +60,3 @@ public class SecurityConfig {
         return http.build();
     }
 }
-
-
