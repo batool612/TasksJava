@@ -15,6 +15,8 @@ import com.tanmeyah.practice.Repository.TaskRepository;
 import com.tanmeyah.practice.Repository.UserRepository;
 import com.tanmeyah.practice.Secuirty.JwtService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -36,11 +38,16 @@ public class AppServiceImpl implements AppService {
     private final TaskRepository taskRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final MessageSource messageSource;
 
     @Override
     public ResponseEntity<AuthResponse> register(RegisterRequest request) {
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
-            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+            throw new ConflictException(messageSource.getMessage(
+                    "email.already.exists",
+                    null,
+                    LocaleContextHolder.getLocale()
+            ));
         }
 
         User user = new User();
@@ -73,7 +80,11 @@ public class AppServiceImpl implements AppService {
     @Override
     public UserResponseDTO createUser(UserRequestDTO request) {
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
-            throw new ConflictException("User with this email already exists");
+            throw new ConflictException(messageSource.getMessage(
+                    "email.already.exists",
+                    null,
+                    LocaleContextHolder.getLocale()
+            ));
         }
 
         User user = new User();
@@ -96,7 +107,9 @@ public class AppServiceImpl implements AppService {
     public UserResponseDTO getUserById(Long id) {
         return userRepository.findById(id)
                 .map(this::mapToUserResponse)
-                .orElseThrow(() -> new NotFoundException("User not found"));
+                .orElseThrow(() -> new NotFoundException(
+                        messageSource.getMessage("user.not.found", null, LocaleContextHolder.getLocale())
+                ));
     }
 
     @Override
@@ -125,7 +138,9 @@ public class AppServiceImpl implements AppService {
     public TaskResponseDTO getTaskById(Long id) {
         return taskRepository.findById(id)
                 .map(this::mapToTaskResponse)
-                .orElseThrow(() -> new NotFoundException("Task not found"));
+                .orElseThrow(() -> new NotFoundException(
+                        messageSource.getMessage("task.not.found", null, LocaleContextHolder.getLocale())
+                ));
     }
 
     @Override
@@ -140,14 +155,18 @@ public class AppServiceImpl implements AppService {
                     Task updated = taskRepository.save(task);
                     return mapToTaskResponse(updated);
                 })
-                .orElseThrow(() -> new NotFoundException("Task not found"));
+                .orElseThrow(() -> new NotFoundException(
+                        messageSource.getMessage("task.not.found", null, LocaleContextHolder.getLocale())
+                ));
     }
 
     @Override
     public boolean deleteTask(Long id, Long userId) {
         User user = getAuthenticatedUser(userId);
         Task task = taskRepository.findByIdAndUserId(id, user.getId())
-                .orElseThrow(() -> new NotFoundException("Task not found"));
+                .orElseThrow(() -> new NotFoundException(
+                        messageSource.getMessage("task.not.found", null, LocaleContextHolder.getLocale())
+                ));
         taskRepository.delete(task);
         return true;
     }
@@ -173,6 +192,8 @@ public class AppServiceImpl implements AppService {
 
     private User getAuthenticatedUser(Long userId) {
         return userRepository.findById(userId)
-                .orElseThrow(() -> new NotFoundException("Authenticated user not found"));
+                .orElseThrow(() -> new NotFoundException(
+                        messageSource.getMessage("user.not.found", null, LocaleContextHolder.getLocale())
+                ));
     }
 }

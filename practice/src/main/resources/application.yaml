@@ -2,6 +2,10 @@ spring:
   application:
     name: practice
 
+  messages:
+    encoding: UTF-8
+    basename: messages
+
   datasource:
     url: jdbc:postgresql://localhost:5432/taskdb
     username: postgres
@@ -25,3 +29,10 @@ spring:
 jwt:
   secret: ${JWT_SECRET:my-super-secret-key-for-jwt-signing-should-be-long}
   expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+
+server:
+  servlet:
+    encoding:
+      charset: UTF-8
+      force: true
+      enabled: true

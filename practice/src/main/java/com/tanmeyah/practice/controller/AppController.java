@@ -8,6 +8,7 @@ import com.tanmeyah.practice.DTO.Responses.AuthResponse;
 import com.tanmeyah.practice.DTO.Responses.TaskResponseDTO;
 import com.tanmeyah.practice.DTO.Responses.UserResponseDTO;
 import com.tanmeyah.practice.Entity.User;
+import com.tanmeyah.practice.Exception.UnauthorizedException;
 import com.tanmeyah.practice.service.AppService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -81,11 +82,11 @@ public class AppController {
 
     private Long extractUserId(Authentication authentication) {
         if (authentication == null || authentication.getPrincipal() == null) {
-            throw new IllegalStateException("Missing authentication principal");
+            throw new UnauthorizedException("Missing authentication principal");
         }
         if (authentication.getPrincipal() instanceof User user) {
             return user.getId();
         }
-        throw new IllegalStateException("Unexpected authentication principal type: " + authentication.getPrincipal().getClass().getName());
+        throw new UnauthorizedException("Unexpected authentication principal type: " + authentication.getPrincipal().getClass().getName());
     }
 }
