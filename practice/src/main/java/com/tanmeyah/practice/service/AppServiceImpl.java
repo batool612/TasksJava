@@ -117,9 +117,12 @@ public class AppServiceImpl implements AppService {
         User user = getAuthenticatedUser(userId);
 
         Task task = new Task();
-        task.setTitle(request.getTitle());
-        task.setDescription(request.getDescription());
-        task.setCompleted(request.isCompleted());
+        // Store multilingual content in DB
+        task.setTitleEn(request.getTitleEn());
+        task.setTitleAr(request.getTitleAr());
+        task.setDescriptionEn(request.getDescriptionEn());
+        task.setDescriptionAr(request.getDescriptionAr());
+        task.setCompleted(request.getCompleted());
         task.setUser(user);
 
         Task saved = taskRepository.save(task);
@@ -148,9 +151,12 @@ public class AppServiceImpl implements AppService {
         User user = getAuthenticatedUser(userId);
         return taskRepository.findByIdAndUserId(id, user.getId())
                 .map(task -> {
-                    task.setTitle(request.getTitle());
-                    task.setDescription(request.getDescription());
-                    task.setCompleted(request.isCompleted());
+                    // Store multilingual content in DB
+                    task.setTitleEn(request.getTitleEn());
+                    task.setTitleAr(request.getTitleAr());
+                    task.setDescriptionEn(request.getDescriptionEn());
+                    task.setDescriptionAr(request.getDescriptionAr());
+                    task.setCompleted(request.getCompleted());
                     task.setUser(user);
                     Task updated = taskRepository.save(task);
                     return mapToTaskResponse(updated);
@@ -179,12 +185,43 @@ public class AppServiceImpl implements AppService {
         );
     }
 
+//    private TaskResponseDTO mapToTaskResponse(Task task) {
+//        return new TaskResponseDTO(
+//                task.getId(),
+//                task.getTitleEn(),
+//                task.getTitleAr(),
+//                task.getDescriptionEn(),
+//                task.getDescriptionAr(),
+//                task.getCompleted(),
+//                task.getUser() != null ? task.getUser().getId() : null,
+//                task.getUser() != null ? task.getUser().getName() : null
+//        );
+//    }
+
     private TaskResponseDTO mapToTaskResponse(Task task) {
+
+        String lang = LocaleContextHolder.getLocale().getLanguage();
+
+        String titleEn = null;
+        String titleAr = null;
+        String descriptionEn = null;
+        String descriptionAr = null;
+
+        if ("ar".equalsIgnoreCase(lang)) {
+            titleAr = task.getTitleAr();
+            descriptionAr = task.getDescriptionAr();
+        } else {
+            titleEn = task.getTitleEn();
+            descriptionEn = task.getDescriptionEn();
+        }
+
         return new TaskResponseDTO(
                 task.getId(),
-                task.getTitle(),
-                task.getDescription(),
-                task.isCompleted(),
+                titleEn,
+                titleAr,
+                descriptionEn,
+                descriptionAr,
+                task.getCompleted(),
                 task.getUser() != null ? task.getUser().getId() : null,
                 task.getUser() != null ? task.getUser().getName() : null
         );

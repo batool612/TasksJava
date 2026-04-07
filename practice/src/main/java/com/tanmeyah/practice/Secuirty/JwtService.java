@@ -24,9 +24,7 @@ public class JwtService {
     private long expirationMs;
 
     // Every JWT token has claims.
-    public String extractUsername(String token) {
-        // We intentionally keep the method name for compatibility with existing code,
-        // but its meaning is now: subject = userId.
+    public String extractUserId(String token) {
         return extractClaim(token, Claims::getSubject);
     }
 
@@ -58,7 +56,7 @@ public class JwtService {
     }
 
     public boolean isTokenValid(String token, UserDetails userDetails) {
-        final String subject = extractUsername(token);
+        final String subject = extractUserId(token);
         boolean matchesIdentity;
         if (userDetails instanceof User user) {
             matchesIdentity = subject.equals(user.getId().toString());

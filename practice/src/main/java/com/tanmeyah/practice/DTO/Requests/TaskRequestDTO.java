@@ -6,13 +6,20 @@ import lombok.Data;
 
 @Data
 public class TaskRequestDTO {
+    @NotBlank
+    @Size(max = 200)
+    private String titleEn;
+
+    @Size(max = 200)
+    private String titleAr;
 
     @NotBlank
-    @Size(min = 2, max = 200)
-    private String title;
+    @Size(max = 2000)
+    private String descriptionEn;
 
     @Size(max = 2000)
-    private String description;
-    private boolean completed;
+    private String descriptionAr;
+
+    private Boolean completed;
 }
 

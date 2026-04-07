@@ -80,10 +80,14 @@ public class AppController {
         return appService.deleteTask(id, userId) ? "Task deleted successfully" : "Task not found";
     }
 
+    //Get the logged-in user’s ID from Spring Security’s Authentication object
     private Long extractUserId(Authentication authentication) {
+        //Is the user logged in? ,,, Is there a principal object?
         if (authentication == null || authentication.getPrincipal() == null) {
             throw new UnauthorizedException("Missing authentication principal");
         }
+        //Check if principal is of type User ,, If yes → cast it automatically to user
+        //principal = the currently authenticated user
         if (authentication.getPrincipal() instanceof User user) {
             return user.getId();
         }
