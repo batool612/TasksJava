@@ -30,6 +30,10 @@ jwt:
   secret: ${JWT_SECRET:my-super-secret-key-for-jwt-signing-should-be-long}
   expiration-ms: ${JWT_EXPIRATION_MS:86400000}
 
+# If set, registering with role ADMIN requires header X-Admin-Register-Secret with this value.
+# Leave empty to disallow ADMIN self-registration via /auth/register.
+app:
+  admin-register-secret: superSecret123
 server:
   servlet:
     encoding:

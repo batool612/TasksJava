@@ -137,6 +137,20 @@ public class GlobalExceptionHandler {
                 ));
     }
 
+    /** Register as ADMIN without secret / wrong secret */
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<ApiErrorResponse> handleForbidden(ForbiddenException ex, HttpServletRequest request) {
+        return ResponseEntity
+                .status(HttpStatus.FORBIDDEN)
+                .body(ApiErrorResponse.of(
+                        HttpStatus.FORBIDDEN.value(),
+                        HttpStatus.FORBIDDEN.getReasonPhrase(),
+                        ex.getMessage(),
+                        request.getRequestURI(),
+                        null
+                ));
+    }
+
     /** AppController when JWT principal is missing or wrong type */
     @ExceptionHandler(UnauthorizedException.class)
     public ResponseEntity<ApiErrorResponse> handleUnauthorized(UnauthorizedException ex, HttpServletRequest request) {

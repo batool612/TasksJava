@@ -17,6 +17,8 @@ import java.util.function.Function;
 @Service
 public class JwtService {
 
+    public static final String ROLE_CLAIM = "role";
+
     @Value("${jwt.secret}")
     private String secret;
 
@@ -36,6 +38,7 @@ public class JwtService {
     public String generateToken(User user) {
         return Jwts.builder()
                 .setSubject(user.getId().toString())
+                .claim(ROLE_CLAIM, user.getRole().name())
                 .setIssuedAt(new Date(System.currentTimeMillis()))
                 .setExpiration(new Date(System.currentTimeMillis() + expirationMs))
                 .signWith(getSignKey(), SignatureAlgorithm.HS256)
@@ -56,14 +59,26 @@ public class JwtService {
     }
 
     public boolean isTokenValid(String token, UserDetails userDetails) {
-        final String subject = extractUserId(token);
-        boolean matchesIdentity;
-        if (userDetails instanceof User user) {
-            matchesIdentity = subject.equals(user.getId().toString());
-        } else {
-            matchesIdentity = subject.equals(userDetails.getUsername());
+        try {
+            final Claims claims = extractAllClaims(token);
+            if (claims.getExpiration().before(new Date())) {
+                return false;
+            }
+            final String subject = claims.getSubject();
+            boolean matchesIdentity;
+            if (userDetails instanceof User user) {
+                matchesIdentity = subject.equals(user.getId().toString());
+                String roleClaim = claims.get(ROLE_CLAIM, String.class);
+                if (roleClaim != null && !roleClaim.equals(user.getRole().name())) {
+                    return false;
+                }
+            } else {
+                matchesIdentity = subject.equals(userDetails.getUsername());
+            }
+            return matchesIdentity;
+        } catch (Exception e) {
+            return false;
         }
-        return matchesIdentity && !isTokenExpired(token);
     }
 
     private boolean isTokenExpired(String token) {

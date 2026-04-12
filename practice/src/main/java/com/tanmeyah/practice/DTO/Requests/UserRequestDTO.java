@@ -16,5 +16,10 @@ public class UserRequestDTO {
     @NotBlank
     @Email
     private String email;
+
+    /** Required when an admin creates a user via POST /users */
+    @NotBlank
+    @Size(min = 8, max = 128)
+    private String password;
 }
 

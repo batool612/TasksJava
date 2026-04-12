@@ -35,12 +35,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         final String jwt;
         final String subject;
 
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+        if (authHeader == null) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+        String trimmed = authHeader.trim();
+        if (!trimmed.regionMatches(true, 0, "Bearer ", 0, 7)) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        jwt = authHeader.substring(7);
+        jwt = trimmed.substring(7).trim();
         try {
             subject = jwtService.extractUserId(jwt); // subject = userId
             Long userId = Long.parseLong(subject);

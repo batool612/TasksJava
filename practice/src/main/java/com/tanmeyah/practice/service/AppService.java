@@ -7,14 +7,14 @@ import com.tanmeyah.practice.DTO.Requests.UserRequestDTO;
 import com.tanmeyah.practice.DTO.Responses.AuthResponse;
 import com.tanmeyah.practice.DTO.Responses.TaskResponseDTO;
 import com.tanmeyah.practice.DTO.Responses.UserResponseDTO;
-import org.springframework.http.ResponseEntity;
+import com.tanmeyah.practice.Entity.User;
 
 import java.util.List;
 
 public interface AppService {
-    ResponseEntity<AuthResponse> register(RegisterRequest request);
+    AuthResponse register(RegisterRequest request, String adminRegisterSecretHeader);
 
-    ResponseEntity<AuthResponse> login(AuthRequest request);
+    AuthResponse login(AuthRequest request);
 
     UserResponseDTO createUser(UserRequestDTO request);
 
@@ -22,13 +22,13 @@ public interface AppService {
 
     UserResponseDTO getUserById(Long id);
 
-    TaskResponseDTO addTask(TaskRequestDTO request, Long userId);
+    TaskResponseDTO addTask(TaskRequestDTO request, User currentUser);
 
     List<TaskResponseDTO> getAllTasks();
 
     TaskResponseDTO getTaskById(Long id);
 
-    TaskResponseDTO updateTask(Long id, TaskRequestDTO request, Long userId);
+    TaskResponseDTO updateTask(Long id, TaskRequestDTO request, User currentUser);
 
-    boolean deleteTask(Long id, Long userId);
+    boolean deleteTask(Long id, User currentUser);
 }

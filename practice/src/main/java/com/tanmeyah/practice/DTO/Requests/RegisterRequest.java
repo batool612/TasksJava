@@ -20,5 +20,11 @@ public class RegisterRequest {
     @NotBlank
     @Size(min = 8, max = 72)
     private String password;
+
+    /**
+     * Optional. Defaults to USER when omitted.
+     * ADMIN is only allowed when {@code app.admin-register-secret} is set and the request sends matching {@code X-Admin-Register-Secret}.
+     */
+    private RegistrationRole role;
 }
 

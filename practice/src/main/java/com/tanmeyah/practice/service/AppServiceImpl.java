@@ -2,14 +2,17 @@ package com.tanmeyah.practice.service;
 
 import com.tanmeyah.practice.DTO.Requests.AuthRequest;
 import com.tanmeyah.practice.DTO.Requests.RegisterRequest;
+import com.tanmeyah.practice.DTO.Requests.RegistrationRole;
 import com.tanmeyah.practice.DTO.Requests.TaskRequestDTO;
 import com.tanmeyah.practice.DTO.Requests.UserRequestDTO;
 import com.tanmeyah.practice.DTO.Responses.AuthResponse;
 import com.tanmeyah.practice.DTO.Responses.TaskResponseDTO;
 import com.tanmeyah.practice.DTO.Responses.UserResponseDTO;
+import com.tanmeyah.practice.Entity.Role;
 import com.tanmeyah.practice.Entity.Task;
 import com.tanmeyah.practice.Entity.User;
 import com.tanmeyah.practice.Exception.ConflictException;
+import com.tanmeyah.practice.Exception.ForbiddenException;
 import com.tanmeyah.practice.Exception.NotFoundException;
 import com.tanmeyah.practice.Repository.TaskRepository;
 import com.tanmeyah.practice.Repository.UserRepository;
@@ -17,8 +20,7 @@ import com.tanmeyah.practice.Secuirty.JwtService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -33,6 +35,9 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AppServiceImpl implements AppService {
 
+    @Value("${app.admin-register-secret:}")
+    private String adminRegisterSecret;
+
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
     private final TaskRepository taskRepository;
@@ -41,7 +46,7 @@ public class AppServiceImpl implements AppService {
     private final MessageSource messageSource;
 
     @Override
-    public ResponseEntity<AuthResponse> register(RegisterRequest request) {
+    public AuthResponse register(RegisterRequest request, String adminRegisterSecretHeader) {
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new ConflictException(messageSource.getMessage(
                     "email.already.exists",
@@ -50,31 +55,43 @@ public class AppServiceImpl implements AppService {
             ));
         }
 
+        // If user sends role → use it ,,,, If not → default = USER
+        RegistrationRole registrationRole = request.getRole() != null ? request.getRole() : RegistrationRole.USER;
+        // Request --> ADMIN ,,,, System ---> ROLE_ADMIN
+        Role assignedRole = registrationRole == RegistrationRole.ADMIN ? Role.ROLE_ADMIN : Role.ROLE_USER;
+        // If admin Must provide correct header secret
+        if (assignedRole == Role.ROLE_ADMIN) {
+            assertAdminRegistrationAllowed(adminRegisterSecretHeader);
+        }
+
         User user = new User();
         user.setName(request.getName());
         user.setEmail(request.getEmail());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setRole("ROLE_USER");
+        user.setRole(assignedRole);
 
         User savedUser = userRepository.save(user);
         String token = jwtService.generateToken(savedUser);
-        return ResponseEntity.status(HttpStatus.CREATED).body(new AuthResponse(token));
+        return toAuthResponse(token, savedUser.getRole());
     }
 
     @Override
-    public ResponseEntity<AuthResponse> login(AuthRequest request) {
+    public AuthResponse login(AuthRequest request) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
         );
 
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
         String token;
+        Role role;
         if (userDetails instanceof User user) {
             token = jwtService.generateToken(user);
+            role = user.getRole();
         } else {
             token = jwtService.generateToken(userDetails);
+            role = Role.ROLE_USER;
         }
-        return ResponseEntity.ok(new AuthResponse(token));
+        return toAuthResponse(token, role);
     }
 
     @Override
@@ -90,6 +107,8 @@ public class AppServiceImpl implements AppService {
         User user = new User();
         user.setName(request.getName());
         user.setEmail(request.getEmail());
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setRole(Role.ROLE_USER);
 
         User saved = userRepository.save(user);
         return mapToUserResponse(saved);
@@ -113,8 +132,8 @@ public class AppServiceImpl implements AppService {
     }
 
     @Override
-    public TaskResponseDTO addTask(TaskRequestDTO request, Long userId) {
-        User user = getAuthenticatedUser(userId);
+    public TaskResponseDTO addTask(TaskRequestDTO request, User currentUser) {
+        User user = getAuthenticatedUser(currentUser.getId());
 
         Task task = new Task();
         // Store multilingual content in DB
@@ -147,56 +166,54 @@ public class AppServiceImpl implements AppService {
     }
 
     @Override
-    public TaskResponseDTO updateTask(Long id, TaskRequestDTO request, Long userId) {
-        User user = getAuthenticatedUser(userId);
-        return taskRepository.findByIdAndUserId(id, user.getId())
-                .map(task -> {
-                    // Store multilingual content in DB
-                    task.setTitleEn(request.getTitleEn());
-                    task.setTitleAr(request.getTitleAr());
-                    task.setDescriptionEn(request.getDescriptionEn());
-                    task.setDescriptionAr(request.getDescriptionAr());
-                    task.setCompleted(request.getCompleted());
-                    task.setUser(user);
-                    Task updated = taskRepository.save(task);
-                    return mapToTaskResponse(updated);
-                })
-                .orElseThrow(() -> new NotFoundException(
-                        messageSource.getMessage("task.not.found", null, LocaleContextHolder.getLocale())
-                ));
+    public TaskResponseDTO updateTask(Long id, TaskRequestDTO request, User currentUser) {
+        User actor = getAuthenticatedUser(currentUser.getId());
+        Task task = resolveTaskForWrite(id, actor);
+        task.setTitleEn(request.getTitleEn());
+        task.setTitleAr(request.getTitleAr());
+        task.setDescriptionEn(request.getDescriptionEn());
+        task.setDescriptionAr(request.getDescriptionAr());
+        task.setCompleted(request.getCompleted());
+        if (actor.getRole() != Role.ROLE_ADMIN) {
+            task.setUser(actor);
+        }
+        Task updated = taskRepository.save(task);
+        return mapToTaskResponse(updated);
     }
 
     @Override
-    public boolean deleteTask(Long id, Long userId) {
-        User user = getAuthenticatedUser(userId);
-        Task task = taskRepository.findByIdAndUserId(id, user.getId())
+    public boolean deleteTask(Long id, User currentUser) {
+        User actor = getAuthenticatedUser(currentUser.getId());
+        Task task = resolveTaskForWrite(id, actor);
+        taskRepository.delete(task);
+        return true;
+    }
+
+    //Single place for “can this actor touch this task?” on update/delete.
+
+
+    private Task resolveTaskForWrite(Long id, User actor) {
+        // Admin can update / delete any task
+        if (actor.getRole() == Role.ROLE_ADMIN) {
+            return taskRepository.findById(id)
+                    .orElseThrow(() -> new NotFoundException(
+                            messageSource.getMessage("task.not.found", null, LocaleContextHolder.getLocale())
+                    ));
+        }
+        return taskRepository.findByIdAndUserId(id, actor.getId())
                 .orElseThrow(() -> new NotFoundException(
                         messageSource.getMessage("task.not.found", null, LocaleContextHolder.getLocale())
                 ));
-        taskRepository.delete(task);
-        return true;
     }
 
     private UserResponseDTO mapToUserResponse(User user) {
         return new UserResponseDTO(
                 user.getId(),
                 user.getName(),
-                user.getEmail()
+                user.getEmail(),
+                user.getRole().name()
         );
     }
-
-//    private TaskResponseDTO mapToTaskResponse(Task task) {
-//        return new TaskResponseDTO(
-//                task.getId(),
-//                task.getTitleEn(),
-//                task.getTitleAr(),
-//                task.getDescriptionEn(),
-//                task.getDescriptionAr(),
-//                task.getCompleted(),
-//                task.getUser() != null ? task.getUser().getId() : null,
-//                task.getUser() != null ? task.getUser().getName() : null
-//        );
-//    }
 
     private TaskResponseDTO mapToTaskResponse(Task task) {
 
@@ -232,5 +249,31 @@ public class AppServiceImpl implements AppService {
                 .orElseThrow(() -> new NotFoundException(
                         messageSource.getMessage("user.not.found", null, LocaleContextHolder.getLocale())
                 ));
+    }
+
+    //Single builder for register and login so role and accountType stay in sync.
+    private AuthResponse toAuthResponse(String token, Role role) {
+        return new AuthResponse(token, role.name(), role == Role.ROLE_ADMIN ? "admin" : "user");
+    }
+
+
+    // This is the gate that stops random clients from registering as ADMIN without knowing the server secret.
+    private void assertAdminRegistrationAllowed(String header) {
+        //If no secret configured then Admin registration is disabled
+        if (adminRegisterSecret == null || adminRegisterSecret.isBlank()) {
+            throw new ForbiddenException(messageSource.getMessage(
+                    "admin.register.disabled",
+                    null,
+                    LocaleContextHolder.getLocale()
+            ));
+        }
+        String provided = header != null ? header.trim() : "";
+        if (!adminRegisterSecret.equals(provided)) {
+            throw new ForbiddenException(messageSource.getMessage(
+                    "admin.register.secret.invalid",
+                    null,
+                    LocaleContextHolder.getLocale()
+            ));
+        }
     }
 }

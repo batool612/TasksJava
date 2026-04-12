@@ -7,6 +7,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -50,8 +51,10 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         //All routes starting with /auth/ are public
                         .requestMatchers("/auth/**").permitAll()
-                        // Public read for tasks
-                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/tasks/**").permitAll()
+                        // List / view tasks: admins only (normal users use POST/PUT/DELETE on their own tasks)
+                        .requestMatchers(HttpMethod.GET, "/tasks/**").hasRole("ADMIN")
+                        // User management: admins only (first admin: set role in DB, e.g. ROLE_ADMIN)
+                        .requestMatchers("/users/**").hasRole("ADMIN")
                         //Any request not defined above must be authenticated.
                         .anyRequest().authenticated()
                 )
